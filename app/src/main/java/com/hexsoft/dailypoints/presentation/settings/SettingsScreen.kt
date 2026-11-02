@@ -3,6 +3,7 @@ package com.hexsoft.dailypoints.presentation.settings
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -201,5 +202,15 @@ fun SettingsScreen(
         uiState.exportError?.let { Text(it) }
         Text("Published by ${context.getString(com.hexsoft.dailypoints.R.string.publisher_name)}")
         Text("Contact us: ${context.getString(com.hexsoft.dailypoints.R.string.contact_email)}")
+        Text(
+            text = context.getString(com.hexsoft.dailypoints.R.string.privacy_policy_label),
+            modifier = Modifier.clickable {
+                val policyIntent = Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse(context.getString(com.hexsoft.dailypoints.R.string.privacy_policy_url)),
+                )
+                context.startActivity(policyIntent)
+            },
+        )
     }
 }

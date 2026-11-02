@@ -2,6 +2,8 @@
     <string name="app_name">Daily Points</string>
     <string name="publisher_name">Hexsoft Limited</string>
     <string name="contact_email">hexsoftltd@gmail.com</string>
+    <string name="privacy_policy_label">Privacy Policy</string>
+    <string name="privacy_policy_url">https://hexsoftltd-dotcom.github.io/Daily-Points/privacy-policy.html</string>
     <string name="dashboard">Dashboard</string>
     <string name="tasks">Tasks</string>
     <string name="calendar">Calendar</string>

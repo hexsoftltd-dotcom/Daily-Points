@@ -8,14 +8,14 @@ plugins {
 
 android {
     namespace = "com.hexsoft.dailypoints"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.hexsoft.dailypoints"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 36
+        versionCode = 3
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "com.hexsoft.dailypoints.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true
