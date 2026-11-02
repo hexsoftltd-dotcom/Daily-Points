@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Daily Points</string>
+    <string name="publisher_name">Hexsoft Limited</string>
+    <string name="contact_email">hexsoftltd@gmail.com</string>
+    <string name="dashboard">Dashboard</string>
+    <string name="tasks">Tasks</string>
+    <string name="calendar">Calendar</string>
+    <string name="reports">Reports</string>
+    <string name="analytics">Analytics</string>
+    <string name="goals">Goals</string>
+    <string name="export">Export</string>
+    <string name="settings">Settings</string>
+</resources>
