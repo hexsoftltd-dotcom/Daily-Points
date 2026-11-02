@@ -22,8 +22,10 @@ class PlannedTaskReminderWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         createChannel()
         val planId = inputData.getLong(KEY_PLAN_ID, -1L)
+        val taskId = inputData.getLong(KEY_TASK_ID, -1L)
         val taskName = inputData.getString(KEY_TASK_NAME).orEmpty()
-        if (planId <= 0L || taskName.isBlank()) return Result.failure()
+        if ((planId <= 0L && taskId <= 0L) || taskName.isBlank()) return Result.failure()
+        val notificationId = if (planId > 0L) planId.toInt() else taskId.toInt()
 
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
@@ -32,7 +34,7 @@ class PlannedTaskReminderWorker @AssistedInject constructor(
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
 
-        NotificationManagerCompat.from(applicationContext).notify(planId.toInt(), notification)
+        NotificationManagerCompat.from(applicationContext).notify(notificationId, notification)
         return Result.success()
     }
 
@@ -51,6 +53,7 @@ class PlannedTaskReminderWorker @AssistedInject constructor(
     companion object {
         const val CHANNEL_ID = "planned_task_reminder_channel"
         const val KEY_PLAN_ID = "plan_id"
+        const val KEY_TASK_ID = "task_id"
         const val KEY_TASK_NAME = "task_name"
     }
 }

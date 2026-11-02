@@ -17,5 +17,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DailyPointsTracker"
+rootProject.name = "DailyPoints"
 include(":app")

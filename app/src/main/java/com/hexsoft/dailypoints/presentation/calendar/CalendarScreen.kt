@@ -1,5 +1,6 @@
 package com.hexsoft.dailypoints.presentation.calendar
 
+import android.app.TimePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,15 +27,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.time.LocalTime
 
 @Composable
 fun CalendarScreen(
     viewModel: CalendarViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -88,7 +92,7 @@ fun CalendarScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(taskName)
-                        Button(onClick = { viewModel.removePlan(plan.id) }) { Text("Delete") }
+                        Button(onClick = { viewModel.removePlan(plan.id, plan.taskId) }) { Text("Delete") }
                     }
                 }
             }
@@ -107,12 +111,43 @@ fun CalendarScreen(
             Text("Set reminder when scheduling")
         }
         if (uiState.reminderEnabled) {
-            OutlinedTextField(
-                value = uiState.reminderTime,
-                onValueChange = viewModel::setReminderTime,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Reminder Time (HH:mm)") },
-            )
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(
+                    checked = uiState.dailyReminderEnabled,
+                    onCheckedChange = viewModel::setDailyReminderEnabled,
+                )
+                Text("Repeat daily for this task")
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        val current = runCatching { LocalTime.parse(uiState.reminderTime) }
+                            .getOrDefault(LocalTime.of(20, 0))
+                        TimePickerDialog(
+                            context,
+                            { _, hourOfDay, minute ->
+                                viewModel.setReminderTime("%02d:%02d".format(hourOfDay, minute))
+                            },
+                            current.hour,
+                            current.minute,
+                            true,
+                        ).show()
+                    },
+            ) {
+                OutlinedTextField(
+                    value = uiState.reminderTime,
+                    onValueChange = {},
+                    readOnly = true,
+                    enabled = false,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Reminder Time (HH:mm)") },
+                )
+            }
         }
         LazyColumn(
             modifier = Modifier.height(140.dp),

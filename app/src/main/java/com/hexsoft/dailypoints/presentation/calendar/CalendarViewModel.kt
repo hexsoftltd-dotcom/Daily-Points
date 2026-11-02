@@ -26,6 +26,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 data class CalendarDay(
@@ -42,7 +43,8 @@ data class CalendarUiState(
     val plannedTasks: List<PlannedTask> = emptyList(),
     val activeTasks: List<Task> = emptyList(),
     val reminderEnabled: Boolean = false,
-    val reminderTime: String = "20:00",
+    val dailyReminderEnabled: Boolean = false,
+    val reminderTime: String = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")),
     val reminderError: String? = null,
 )
 
@@ -55,6 +57,7 @@ private data class CalendarBaseData(
 
 private data class CalendarReminderData(
     val enabled: Boolean,
+    val dailyEnabled: Boolean,
     val time: String,
     val error: String?,
 )
@@ -69,12 +72,14 @@ class CalendarViewModel @Inject constructor(
     private val deletePlannedTaskUseCase: DeletePlannedTaskUseCase,
     private val reminderScheduler: ReminderScheduler,
 ) : ViewModel() {
+    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     private val month = MutableStateFlow(YearMonth.now())
     private val selectedDate = MutableStateFlow(DateUtils.today())
     private val dayPoints = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     private val completedByDate = MutableStateFlow<Map<LocalDate, List<String>>>(emptyMap())
     private val reminderEnabled = MutableStateFlow(false)
-    private val reminderTime = MutableStateFlow("20:00")
+    private val dailyReminderEnabled = MutableStateFlow(false)
+    private val reminderTime = MutableStateFlow(LocalTime.now().format(timeFormatter))
     private val reminderError = MutableStateFlow<String?>(null)
     private val goalFlow = getGoalsUseCase()
 
@@ -94,11 +99,13 @@ class CalendarViewModel @Inject constructor(
 
     private val reminderData = combine(
         reminderEnabled,
+        dailyReminderEnabled,
         reminderTime,
         reminderError,
-    ) { enabled, time, error ->
+    ) { enabled, dailyEnabled, time, error ->
         CalendarReminderData(
             enabled = enabled,
+            dailyEnabled = dailyEnabled,
             time = time,
             error = error,
         )
@@ -131,6 +138,7 @@ class CalendarViewModel @Inject constructor(
             plannedTasks = plans,
             activeTasks = activeTasks,
             reminderEnabled = reminder.enabled,
+            dailyReminderEnabled = reminder.dailyEnabled,
             reminderTime = reminder.time,
             reminderError = reminder.error,
         )
@@ -160,15 +168,19 @@ class CalendarViewModel @Inject constructor(
                 val planId = addPlannedTaskUseCase(taskId, selectedDate.value)
                 if (reminderEnabled.value) {
                     val time = LocalTime.parse(reminderTime.value.trim())
-                    val triggerDateTime = selectedDate.value.atTime(time)
-                    require(triggerDateTime.isAfter(LocalDateTime.now())) {
-                        "Reminder time must be in the future."
+                    if (dailyReminderEnabled.value) {
+                        reminderScheduler.scheduleDailyPlannedTaskReminder(taskId, taskName, time)
+                    } else {
+                        val triggerDateTime = selectedDate.value.atTime(time)
+                        require(triggerDateTime.isAfter(LocalDateTime.now())) {
+                            "Reminder time must be in the future."
+                        }
+                        val triggerAtMillis = triggerDateTime
+                            .atZone(ZoneId.systemDefault())
+                            .toInstant()
+                            .toEpochMilli()
+                        reminderScheduler.schedulePlannedTaskReminder(planId, taskName, triggerAtMillis)
                     }
-                    val triggerAtMillis = triggerDateTime
-                        .atZone(ZoneId.systemDefault())
-                        .toInstant()
-                        .toEpochMilli()
-                    reminderScheduler.schedulePlannedTaskReminder(planId, taskName, triggerAtMillis)
                 }
                 reminderError.value = null
             } catch (throwable: Throwable) {
@@ -177,10 +189,11 @@ class CalendarViewModel @Inject constructor(
         }
     }
 
-    fun removePlan(planId: Long) {
+    fun removePlan(planId: Long, taskId: Long) {
         viewModelScope.launch {
             deletePlannedTaskUseCase(planId)
             reminderScheduler.cancelPlannedTaskReminder(planId)
+            reminderScheduler.cancelDailyPlannedTaskReminder(taskId)
         }
     }
 
@@ -191,6 +204,11 @@ class CalendarViewModel @Inject constructor(
 
     fun setReminderTime(value: String) {
         reminderTime.value = value
+        reminderError.value = null
+    }
+
+    fun setDailyReminderEnabled(enabled: Boolean) {
+        dailyReminderEnabled.value = enabled
         reminderError.value = null
     }
 

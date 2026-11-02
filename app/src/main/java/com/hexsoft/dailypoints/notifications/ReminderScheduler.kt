@@ -6,12 +6,14 @@ import android.content.Context
 import android.content.Intent
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.workDataOf
 import androidx.work.WorkManager
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import java.util.concurrent.TimeUnit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -56,15 +58,46 @@ class ReminderScheduler @Inject constructor(
         workManager.cancelUniqueWork(plannedTaskWorkName(planId))
     }
 
+    fun scheduleDailyPlannedTaskReminder(taskId: Long, taskName: String, reminderTime: LocalTime) {
+        require(taskId > 0L) { "Task id is required for daily reminder." }
+        val initialDelayMillis = Duration.between(
+            LocalDateTime.now(),
+            nextRunDateTime(reminderTime),
+        ).toMillis().coerceAtLeast(1L)
+        val request = PeriodicWorkRequestBuilder<PlannedTaskReminderWorker>(24, TimeUnit.HOURS)
+            .setInitialDelay(initialDelayMillis, TimeUnit.MILLISECONDS)
+            .setInputData(
+                workDataOf(
+                    PlannedTaskReminderWorker.KEY_PLAN_ID to -1L,
+                    PlannedTaskReminderWorker.KEY_TASK_ID to taskId,
+                    PlannedTaskReminderWorker.KEY_TASK_NAME to taskName,
+                ),
+            )
+            .build()
+        workManager.enqueueUniquePeriodicWork(
+            plannedTaskDailyWorkName(taskId),
+            androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
+            request,
+        )
+    }
+
+    fun cancelDailyPlannedTaskReminder(taskId: Long) {
+        workManager.cancelUniqueWork(plannedTaskDailyWorkName(taskId))
+    }
+
     private fun nextTriggerTime(reminderTime: LocalTime): Long {
+        return nextRunDateTime(reminderTime)
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+    }
+
+    private fun nextRunDateTime(reminderTime: LocalTime): LocalDateTime {
         val now = LocalDateTime.now()
         val nowMinutes = now.hour * 60 + now.minute
         val reminderMinutes = reminderTime.hour * 60 + reminderTime.minute
         val nextDate = if (nowMinutes <= reminderMinutes) now.toLocalDate() else now.toLocalDate().plusDays(1)
         return nextDate.atTime(reminderTime)
-            .atZone(ZoneId.systemDefault())
-            .toInstant()
-            .toEpochMilli()
     }
 
     private fun scheduleExactDailyAlarm(triggerAtMillis: Long, reminderTime: LocalTime) {
@@ -108,5 +141,6 @@ class ReminderScheduler @Inject constructor(
         const val EXTRA_REMINDER_MINUTE = "extra_reminder_minute"
 
         fun plannedTaskWorkName(planId: Long): String = "planned_task_reminder_$planId"
+        fun plannedTaskDailyWorkName(taskId: Long): String = "planned_task_daily_reminder_$taskId"
     }
 }
